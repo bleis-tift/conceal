@@ -17,6 +17,7 @@ module Conceal =
 
   type State =
     | Empty
+    | WithInputPath of string
     | WithSlides of Slides
     static member Load(style: Style, path: string) =
       match SlidesLoader.load style path with
@@ -26,16 +27,26 @@ module Conceal =
   type Message =
     | Next
     | Prev
+    | UpdatePath of string
+    | StartPresentation
 
-  let update (msg: Message) (state: State) : State =
+  let update (style: Style) (msg: Message) (state: State) : State =
     match state with
     | Empty ->
-        // TODO : impl
-        state
+        match msg with
+        | UpdatePath "" -> Empty
+        | UpdatePath path -> WithInputPath path
+        | other -> eprintfn "Received an invalid message: %A (current state: Emppty)" other; state
+    | WithInputPath path ->
+        match msg with
+        | StartPresentation -> State.Load(style, path)
+        | UpdatePath path -> WithInputPath path
+        | other -> eprintfn "Received an invalid message: %A (current state: WithInputPath)" other; state
     | WithSlides pages ->
         match msg with
         | Next -> WithSlides pages.Next
         | Prev -> WithSlides pages.Prev
+        | other -> eprintfn "Received an invalid message: %A (current state: WithSlides)" other; state
 
   let toAvaloniaColor (color: Color) =
     Media.Color.FromArgb(color.A, color.R, color.G, color.B)
@@ -61,11 +72,36 @@ module Conceal =
   let buildContentsView (contents: PageContent list) =
     contents |> List.map buildContentView
 
+  let buildLoadPageView path dispatch =
+    DockPanel.create [
+      DockPanel.lastChildFill false
+      DockPanel.children [
+        DockPanel.create [
+          DockPanel.dock Dock.Top
+          DockPanel.children [
+            Button.create [
+              Button.dock Dock.Right
+              Button.content "Start Presentation"
+              Button.onClick (fun args ->
+                args.Handled <- true
+                dispatch StartPresentation
+              )
+            ]
+            TextBox.create [
+              TextBox.text path
+              TextBox.onTextChanged (UpdatePath >> dispatch)
+            ]
+          ]
+        ]
+      ]
+    ]
+
   let view (state: State) dispatch =
     match state with
     | Empty ->
-        // TODO : impl
-        DockPanel.create []
+        buildLoadPageView "" dispatch
+    | WithInputPath path ->
+        buildLoadPageView path dispatch
     | WithSlides pages ->
         let crntPage = pages.CurrentPage
         DockPanel.create [
