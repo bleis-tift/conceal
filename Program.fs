@@ -1,5 +1,6 @@
 ﻿namespace Conceal
 
+open System
 open Elmish
 open Avalonia
 open Avalonia.Controls
@@ -9,12 +10,32 @@ open Avalonia.FuncUI
 open Avalonia.FuncUI.Elmish
 open Avalonia.FuncUI.Components.Hosts
 
-type MainWindow() as this =
+type Args =
+  { Width: int
+    Height: int
+    Path: string option }
+
+module Args =
+  let (|Integer|_|) (str: string) =
+    match Int32.TryParse(str) with
+    | true, result -> Some result
+    | false, _ -> None
+
+  let parse args =
+    let rec parse' acc = function
+    | (Integer w)::(Integer h)::rest -> parse' { acc with Width = w; Height = h } rest
+    | path::rest -> parse' { acc with Path = Some path } rest
+    | [] -> acc
+
+    parse' { Width = 1600; Height = 900; Path = None } (args |> Array.toList)
+
+type MainWindow(args: string[]) as this =
   inherit HostWindow()
   do
+    let args = Args.parse args
     base.Title <- "Conceal"
-    base.Width <- 400.0
-    base.Height <- 400.0
+    base.Width <- float args.Width
+    base.Height <- float args.Height
     base.CanResize <- false
     base.WindowStartupLocation <- WindowStartupLocation.CenterScreen
     
@@ -36,7 +57,7 @@ type App() =
   override this.OnFrameworkInitializationCompleted() =
     match this.ApplicationLifetime with
     | :? IClassicDesktopStyleApplicationLifetime as desktopLifetime ->
-      desktopLifetime.MainWindow <- MainWindow()
+      desktopLifetime.MainWindow <- MainWindow(desktopLifetime.Args)
     | _ -> ()
 
 module Program =
