@@ -2,6 +2,7 @@
 
 open Elmish
 open Avalonia
+open Avalonia.Controls
 open Avalonia.Controls.ApplicationLifetimes
 open Avalonia.Input
 open Avalonia.FuncUI
@@ -14,6 +15,8 @@ type MainWindow() as this =
     base.Title <- "Conceal"
     base.Width <- 400.0
     base.Height <- 400.0
+    base.CanResize <- false
+    base.WindowStartupLocation <- WindowStartupLocation.CenterScreen
     
     //this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
     //this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
