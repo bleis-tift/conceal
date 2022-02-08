@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "Conceal": {
+      "commandName": "Project",
+      "commandLineArgs": "hoge"
+    }
+  }
+}

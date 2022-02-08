@@ -6,6 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="Page.fs" />
+    <Compile Include="Styles.fs" />
+    <Compile Include="SlidesLoader.fs" />
     <Compile Include="Conceal.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>

@@ -13,6 +13,7 @@ open Avalonia.FuncUI.Components.Hosts
 type Args =
   { Width: int
     Height: int
+    Style: Style
     Path: string option }
 
 module Args =
@@ -21,13 +22,20 @@ module Args =
     | true, result -> Some result
     | false, _ -> None
 
+  let (|OptionName|_|) (prefix: string) (str: string) =
+    if str.StartsWith(prefix) then
+      Some (str.Substring(prefix.Length))
+    else
+      None
+
   let parse args =
     let rec parse' acc = function
     | (Integer w)::(Integer h)::rest -> parse' { acc with Width = w; Height = h } rest
+    | (OptionName "style=" "dark")::rest -> parse' { acc with Style = Styles.dark } rest
     | path::rest -> parse' { acc with Path = Some path } rest
     | [] -> acc
 
-    parse' { Width = 1600; Height = 900; Path = None } (args |> Array.toList)
+    parse' { Width = 1600; Height = 900; Style = Styles.dark; Path = None } (args |> Array.toList)
 
 type MainWindow(args: string[]) as this =
   inherit HostWindow()
@@ -42,7 +50,12 @@ type MainWindow(args: string[]) as this =
     //this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
     //this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
 
-    Elmish.Program.mkSimple (fun () -> ()) Conceal.update Conceal.view
+    let state =
+      match args.Path with
+      | Some path -> Conceal.State.Load(args.Style, path)
+      | None -> Conceal.State.Empty
+
+    Elmish.Program.mkSimple (fun () -> state) Conceal.update Conceal.view
     |> Program.withHost this
     |> Program.run
 
