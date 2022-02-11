@@ -48,20 +48,32 @@ module Conceal =
         | Prev -> WithSlides pages.Prev
         | other -> eprintfn "Received an invalid message: %A (current state: WithSlides)" other; state
 
+  // for-debug
+  let private withBorder (v: IView) =
+    Border.create [
+      Border.borderThickness 1.0
+      Border.borderBrush "#ffff0000"
+      Border.child v
+    ]
+
   let toAvaloniaColor (color: Color) =
     Media.Color.FromArgb(color.A, color.R, color.G, color.B)
 
   let toBrush (color: Color) =
     Media.SolidColorBrush(toAvaloniaColor color)
 
-  let buildContentView (content: PageContent) : IView =
+  let buildContentView (pageType: PageType) (content: PageContent) : IView =
     match content with
     | Text text ->
         StackPanel.create [
           StackPanel.orientation Orientation.Horizontal
+          StackPanel.verticalAlignment VerticalAlignment.Center
+          if pageType = TitlePage then
+            StackPanel.horizontalAlignment HorizontalAlignment.Center
           StackPanel.children [
             for t in text.Elements do
               TextBlock.create [
+                TextBlock.verticalAlignment VerticalAlignment.Center
                 TextBlock.fontSize 48.0
                 TextBlock.foreground (toBrush t.Color)
                 TextBlock.text t.Value
@@ -69,8 +81,8 @@ module Conceal =
           ]
         ]
 
-  let buildContentsView (contents: PageContent list) =
-    contents |> List.map buildContentView
+  let buildContentsView (pageType: PageType) (contents: PageContent list) =
+    contents |> List.map (buildContentView pageType)
 
   let buildLoadPageView path dispatch =
     DockPanel.create [
@@ -122,9 +134,11 @@ module Conceal =
           DockPanel.children [
             StackPanel.create [
               StackPanel.orientation Orientation.Vertical
+              if crntPage.PageType = TitlePage then
+                StackPanel.verticalAlignment VerticalAlignment.Center
               StackPanel.children [
-                yield! buildContentsView crntPage.Header
-                yield! buildContentsView crntPage.Body
+                yield! buildContentsView crntPage.PageType crntPage.Header
+                yield! buildContentsView crntPage.PageType crntPage.Body
               ]
             ]
           ]
