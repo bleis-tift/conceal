@@ -10,13 +10,7 @@ open Avalonia.FuncUI
 open Avalonia.FuncUI.Elmish
 open Avalonia.FuncUI.Components.Hosts
 
-type Args =
-  { Width: int
-    Height: int
-    Style: Style
-    Path: string option }
-
-module Args =
+module ViewInfo =
   let (|Integer|_|) (str: string) =
     match Int32.TryParse(str) with
     | true, result -> Some result
@@ -27,6 +21,8 @@ module Args =
       Some (str.Substring(prefix.Length))
     else
       None
+
+  open Conceal
 
   let parse args =
     let rec parse' acc = function
@@ -40,7 +36,7 @@ module Args =
 type MainWindow(args: string[]) as this =
   inherit HostWindow()
   do
-    let args = Args.parse args
+    let args = ViewInfo.parse args
     base.Title <- "Conceal"
     base.Width <- float args.Width
     base.Height <- float args.Height
@@ -55,7 +51,7 @@ type MainWindow(args: string[]) as this =
       | Some path -> Conceal.State.Load(args.Style, path)
       | None -> Conceal.State.Empty
 
-    Elmish.Program.mkSimple (fun () -> state) (Conceal.update args.Style) Conceal.view
+    Elmish.Program.mkSimple (fun () -> state) (Conceal.update args.Style) (Conceal.view args)
     |> Program.withHost this
     |> Program.run
 

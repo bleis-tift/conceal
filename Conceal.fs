@@ -15,6 +15,16 @@ module Conceal =
     member this.Prev = { this with Current = max (this.Current - 1) 0 }
     member this.CurrentPage = this.Pages[this.Current]
 
+  type ViewInfo =
+    { Width: int
+      Height: int
+      Style: Style
+      Path: string option }
+
+  type ContentInfo =
+    { ViewInfo: ViewInfo
+      MaxSize: float }
+
   type State =
     | Empty
     | WithInputPath of string
@@ -62,7 +72,7 @@ module Conceal =
   let toBrush (color: Color) =
     Media.SolidColorBrush(toAvaloniaColor color)
 
-  let rec buildContentView (pageType: PageType) (content: PageContent) : IView =
+  let rec buildContentView (info: ContentInfo) (pageType: PageType) (content: PageContent) : IView =
     match content with
     | Text text ->
         StackPanel.create [
@@ -74,7 +84,7 @@ module Conceal =
             for t in text.Elements do
               TextBlock.create [
                 TextBlock.verticalAlignment VerticalAlignment.Center
-                TextBlock.fontSize 48.0
+                TextBlock.fontSize info.MaxSize
                 TextBlock.foreground (toBrush t.Color)
                 TextBlock.text t.Value
               ]
@@ -91,14 +101,14 @@ module Conceal =
                   TextBlock.create [
                     TextBlock.verticalAlignment VerticalAlignment.Top
                     TextBlock.horizontalAlignment HorizontalAlignment.Center
-                    TextBlock.fontSize 48.0
+                    TextBlock.fontSize info.MaxSize
                     TextBlock.text "・ "
                   ]
                   StackPanel.create [
                     StackPanel.orientation Orientation.Vertical
                     StackPanel.children [
                       for elem in listItem do
-                        buildContentView pageType elem
+                        buildContentView info pageType elem
                     ]
                   ]
                 ]
@@ -106,8 +116,8 @@ module Conceal =
           ]
         ]
 
-  let buildContentsView (pageType: PageType) (contents: PageContent list) =
-    contents |> List.map (buildContentView pageType)
+  let buildContentsView (info: ContentInfo) (pageType: PageType) (contents: PageContent list) =
+    contents |> List.map (buildContentView info pageType)
 
   let buildLoadPageView path dispatch =
     DockPanel.create [
@@ -133,7 +143,7 @@ module Conceal =
       ]
     ]
 
-  let view (state: State) dispatch =
+  let view (info: ViewInfo) (state: State) dispatch =
     match state with
     | Empty ->
         buildLoadPageView "" dispatch
@@ -162,8 +172,14 @@ module Conceal =
               if crntPage.PageType = TitlePage then
                 StackPanel.verticalAlignment VerticalAlignment.Center
               StackPanel.children [
-                yield! buildContentsView crntPage.PageType crntPage.Header
-                yield! buildContentsView crntPage.PageType crntPage.Body
+                let headerInfo =
+                  match crntPage.PageType with
+                  | TitlePage -> { ViewInfo = info; MaxSize = info.Style.TitleSize(info.Height) }
+                  | ContentPage -> { ViewInfo = info; MaxSize = info.Style.HeaderSize(info.Height) }
+                let bodyInfo =
+                  { ViewInfo = info; MaxSize = info.Style.TextSize(info.Height) }
+                yield! buildContentsView headerInfo crntPage.PageType crntPage.Header
+                yield! buildContentsView bodyInfo crntPage.PageType crntPage.Body
               ]
             ]
           ]

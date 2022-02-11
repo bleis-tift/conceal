@@ -6,7 +6,16 @@ type Color =
   { A: byte; R: byte; G: byte; B: byte }
 
 type Style =
-  { TextColor: Color }
+  { TextColor: Color
+    TitleSizeRate: float
+    HeaderSizeRate: float
+    TextSizeRate: float }
+  member this.TitleSize(height: int) =
+    float height * this.TitleSizeRate
+  member this.HeaderSize(height: int) =
+    float height * this.HeaderSizeRate
+  member this.TextSize(height: int) =
+    float height * this.TextSizeRate
 
 type TextElement =
   { Value: string
