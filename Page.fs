@@ -21,7 +21,9 @@ type Text =
 
 type PageContent =
   | Text of Text
+  | List of PageContent list list
   static member CreateText(text: Text) = Text text
+  static member CreateList(listItems: PageContent list list) = List listItems
 
 type PageType = TitlePage | ContentPage
 

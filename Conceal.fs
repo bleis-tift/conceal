@@ -62,7 +62,7 @@ module Conceal =
   let toBrush (color: Color) =
     Media.SolidColorBrush(toAvaloniaColor color)
 
-  let buildContentView (pageType: PageType) (content: PageContent) : IView =
+  let rec buildContentView (pageType: PageType) (content: PageContent) : IView =
     match content with
     | Text text ->
         StackPanel.create [
@@ -77,6 +77,31 @@ module Conceal =
                 TextBlock.fontSize 48.0
                 TextBlock.foreground (toBrush t.Color)
                 TextBlock.text t.Value
+              ]
+          ]
+        ]
+    | List listItems ->
+        StackPanel.create [
+          StackPanel.orientation Orientation.Vertical
+          StackPanel.children [
+            for listItem in listItems do
+              StackPanel.create [
+                StackPanel.orientation Orientation.Horizontal
+                StackPanel.children [
+                  TextBlock.create [
+                    TextBlock.verticalAlignment VerticalAlignment.Top
+                    TextBlock.horizontalAlignment HorizontalAlignment.Center
+                    TextBlock.fontSize 48.0
+                    TextBlock.text "・ "
+                  ]
+                  StackPanel.create [
+                    StackPanel.orientation Orientation.Vertical
+                    StackPanel.children [
+                      for elem in listItem do
+                        buildContentView pageType elem
+                    ]
+                  ]
+                ]
               ]
           ]
         ]
