@@ -14,15 +14,11 @@ open WebView
 open SKPictureControl
 
 module Conceal =
-  type RunResult =
-    { Outputs: string list
-      Error: bool }
-
   type Slides =
     { Pages: Page[]
       Current: int
       Browser: string option
-      RunResult: RunResult option }
+      RunResult: CodeRunner.RunResult option }
     member this.Next = { this with Current = min (this.Current + 1) (this.Pages.Length - 1) }
     member this.Prev = { this with Current = max (this.Current - 1) 0 }
     member this.CurrentPage = this.Pages[this.Current]
@@ -81,13 +77,7 @@ module Conceal =
         | OpenWebPage link -> WithSlides ({ pages with Browser = Some link }, onLink)
         | CloseWebPage -> WithSlides ({ pages with Browser = None }, onLink)
         | RunCode code ->
-            // TODO : impl
-            let result =
-              { Outputs = [
-                  "output1"
-                  "output2"
-                ]
-                Error = true }
+            let result = CodeRunner.run "dotnet" code
             WithSlides ({ pages with RunResult = Some result }, onLink)
         | CloseRunResult -> WithSlides ({ pages with RunResult = None }, onLink)
         | other -> eprintfn "Received an invalid message: %A (current state: WithSlides)" other; state
@@ -295,7 +285,7 @@ module Conceal =
       ]
     ]
 
-  let buildRunResultView info result crntPage dispatch =
+  let buildRunResultView info (result: CodeRunner.RunResult) crntPage dispatch =
     DockPanel.create [
       DockPanel.children [
         Grid.create [
@@ -319,14 +309,13 @@ module Conceal =
                 StackPanel.create [
                   StackPanel.orientation Orientation.Vertical
                   StackPanel.children [
-                    for line in result.Outputs do
-                      TextBlock.create [
-                        if result.Error then
-                          TextBlock.foreground (toBrush info.Style.CodeStyles.ErrorColor)
-                        TextBlock.fontFamily (toFontFamily info.Style.CodeStyles.FontName)
-                        TextBlock.fontSize (bodyInfo.MaxFontSize * 0.8)
-                        TextBlock.text line
-                      ]
+                    TextBlock.create [
+                      if result.Error then
+                        TextBlock.foreground (toBrush info.Style.CodeStyles.ErrorColor)
+                      TextBlock.fontFamily (toFontFamily info.Style.CodeStyles.FontName)
+                      TextBlock.fontSize (bodyInfo.MaxFontSize * 0.6)
+                      TextBlock.text result.Output
+                    ]
                   ]
                 ]
               ]

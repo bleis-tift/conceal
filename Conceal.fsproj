@@ -6,6 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Include="CodeRunner.fs" />
     <Compile Include="SKPictureControl.fs" />
     <Compile Include="WebView.fs" />
     <Compile Include="Page.fs" />
