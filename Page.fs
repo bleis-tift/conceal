@@ -7,7 +7,9 @@ type Color =
 
 type CodeStyles =
   { Background: Color
-    FontName: string }
+    FontName: string
+    ResultBackground: Color
+    ErrorColor: Color }
 
 type Style =
   { TextColor: Color

@@ -14,10 +14,15 @@ open WebView
 open SKPictureControl
 
 module Conceal =
+  type RunResult =
+    { Outputs: string list
+      Error: bool }
+
   type Slides =
     { Pages: Page[]
       Current: int
-      Browser: string option }
+      Browser: string option
+      RunResult: RunResult option }
     member this.Next = { this with Current = min (this.Current + 1) (this.Pages.Length - 1) }
     member this.Prev = { this with Current = max (this.Current - 1) 0 }
     member this.CurrentPage = this.Pages[this.Current]
@@ -40,7 +45,7 @@ module Conceal =
     | WithSlides of Slides * OnLink: bool
     static member Load(style: Style, path: string) =
       match SlidesLoader.load style path with
-      | Some pages -> WithSlides ({ Pages = pages; Current = 0; Browser = None }, false)
+      | Some pages -> WithSlides ({ Pages = pages; Current = 0; Browser = None; RunResult = None }, false)
       | None -> Empty
 
   type Message =
@@ -50,6 +55,8 @@ module Conceal =
     | OffLink
     | OpenWebPage of string
     | CloseWebPage
+    | RunCode of string
+    | CloseRunResult
     | UpdatePath of string
     | StartPresentation
 
@@ -73,6 +80,16 @@ module Conceal =
         | OffLink -> WithSlides (pages, false)
         | OpenWebPage link -> WithSlides ({ pages with Browser = Some link }, onLink)
         | CloseWebPage -> WithSlides ({ pages with Browser = None }, onLink)
+        | RunCode code ->
+            // TODO : impl
+            let result =
+              { Outputs = [
+                  "output1"
+                  "output2"
+                ]
+                Error = true }
+            WithSlides ({ pages with RunResult = Some result }, onLink)
+        | CloseRunResult -> WithSlides ({ pages with RunResult = None }, onLink)
         | other -> eprintfn "Received an invalid message: %A (current state: WithSlides)" other; state
 
   // for-debug
@@ -91,6 +108,11 @@ module Conceal =
 
   let toFontFamily (fontName: string) =
     Media.FontFamily(fontName)
+
+  let code (lines: Text list) =
+    lines
+    |> List.map (fun x -> x.Elements |> List.map (fun e -> e.Value) |> String.concat "")
+    |> String.concat "\r\n"
 
   let private normalCursor = new Cursor(StandardCursorType.Arrow)
   let private linkCursor = new Cursor(StandardCursorType.Hand)
@@ -149,6 +171,10 @@ module Conceal =
              Button.right 0.0
              Button.fontSize (info.MaxFontSize * 0.5)
              Button.content "Run"
+             Button.onClick (fun args ->
+               args.Handled <- true
+               dispatch (RunCode (code lines))
+             )
            ]
          ]
        ]
@@ -240,6 +266,76 @@ module Conceal =
     | (Text _)::rest -> 1 + textLines rest
     | (Code lines)::rest -> List.length lines + textLines rest
 
+  let contentInfos info onLink crntPage =
+    let headerInfo =
+      let maxSize =
+        match crntPage.PageType with
+        | TitlePage -> info.Style.TitleSize(info.Height)
+        | ContentPage -> info.Style.HeaderSize(info.Height)
+      { ViewInfo = info; OnLink = onLink; MaxFontSize = maxSize; MaxImageSize = maxSize }
+    let maxHeaderHeight = headerInfo.MaxFontSize * (float (List.length crntPage.Header))
+    let maxBodyHeight = float info.Height - maxHeaderHeight
+    // TODO : treat multiple images
+    let imageHeight =
+      maxBodyHeight - (info.Style.TextSize(info.Height) * (crntPage.Body |> textLines |> (+)1 |> float))
+      |> (*)0.9
+    let bodyInfo =
+      { ViewInfo = info; OnLink = onLink; MaxFontSize = info.Style.TextSize(info.Height); MaxImageSize = imageHeight }
+    (headerInfo, bodyInfo)
+
+  let buildCurrentPage info onLink crntPage dispatch =
+    StackPanel.create [
+      StackPanel.orientation Orientation.Vertical
+      if crntPage.PageType = TitlePage then
+        StackPanel.verticalAlignment VerticalAlignment.Center
+      StackPanel.children [
+        let headerInfo, bodyInfo = contentInfos info onLink crntPage
+        yield! buildContentsView headerInfo crntPage.PageType crntPage.Header dispatch
+        yield! buildContentsView bodyInfo crntPage.PageType crntPage.Body dispatch
+      ]
+    ]
+
+  let buildRunResultView info result crntPage dispatch =
+    DockPanel.create [
+      DockPanel.children [
+        Grid.create [
+          Grid.children [
+            let headerInfo, bodyInfo = contentInfos info false crntPage
+            buildCurrentPage info false crntPage dispatch
+            Canvas.create [
+              Canvas.height (float info.Height - headerInfo.MaxFontSize * 0.9)
+              Canvas.width (float info.Width * 0.9)
+              Canvas.background (toBrush info.Style.CodeStyles.ResultBackground)
+              Canvas.children [
+                Button.create [
+                  Button.right 0.0
+                  Button.fontSize (bodyInfo.MaxFontSize * 0.5)
+                  Button.content "Close"
+                  Button.onClick (fun args ->
+                    args.Handled <- true
+                    dispatch CloseRunResult
+                  )
+                ]
+                StackPanel.create [
+                  StackPanel.orientation Orientation.Vertical
+                  StackPanel.children [
+                    for line in result.Outputs do
+                      TextBlock.create [
+                        if result.Error then
+                          TextBlock.foreground (toBrush info.Style.CodeStyles.ErrorColor)
+                        TextBlock.fontFamily (toFontFamily info.Style.CodeStyles.FontName)
+                        TextBlock.fontSize (bodyInfo.MaxFontSize * 0.8)
+                        TextBlock.text line
+                      ]
+                  ]
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+
   let view (info: ViewInfo) (state: State) dispatch =
     match state with
     | Empty ->
@@ -248,8 +344,9 @@ module Conceal =
         buildLoadPageView path dispatch
     | WithSlides ({ Browser = Some link; Pages = _; Current = _ }, _) ->
         buildBrowserView info link dispatch
+    | WithSlides ({ RunResult = Some result; } as pages, _) ->
+        buildRunResultView info result pages.CurrentPage dispatch
     | WithSlides (pages, onLink) ->
-        let crntPage = pages.CurrentPage
         DockPanel.create [
           DockPanel.focusable true
           DockPanel.onKeyDown (fun args ->
@@ -266,28 +363,6 @@ module Conceal =
             | _ -> ()
           )
           DockPanel.children [
-            StackPanel.create [
-              StackPanel.orientation Orientation.Vertical
-              if crntPage.PageType = TitlePage then
-                StackPanel.verticalAlignment VerticalAlignment.Center
-              StackPanel.children [
-                let headerInfo =
-                  let maxSize =
-                    match crntPage.PageType with
-                    | TitlePage -> info.Style.TitleSize(info.Height)
-                    | ContentPage -> info.Style.HeaderSize(info.Height)
-                  { ViewInfo = info; OnLink = onLink; MaxFontSize = maxSize; MaxImageSize = maxSize }
-                let maxHeaderHeight = headerInfo.MaxFontSize * (float (List.length crntPage.Header))
-                let maxBodyHeight = float info.Height - maxHeaderHeight
-                // TODO : treat multiple images
-                let imageHeight =
-                  maxBodyHeight - (info.Style.TextSize(info.Height) * (crntPage.Body |> textLines |> (+)1 |> float))
-                  |> (*)0.9
-                let bodyInfo =
-                  { ViewInfo = info; OnLink = onLink; MaxFontSize = info.Style.TextSize(info.Height); MaxImageSize = imageHeight }
-                yield! buildContentsView headerInfo crntPage.PageType crntPage.Header dispatch
-                yield! buildContentsView bodyInfo crntPage.PageType crntPage.Body dispatch
-              ]
-            ]
+            buildCurrentPage info onLink pages.CurrentPage dispatch
           ]
         ]
