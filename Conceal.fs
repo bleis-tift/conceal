@@ -6,6 +6,10 @@ open Avalonia.FuncUI.DSL
 open Avalonia.FuncUI.Types
 open Avalonia.Input
 open Avalonia.Layout
+open Avalonia.Controls.Skia
+open global.Svg.Skia
+
+open SKPictureControl
 
 module Conceal =
   type Slides =
@@ -23,7 +27,8 @@ module Conceal =
 
   type ContentInfo =
     { ViewInfo: ViewInfo
-      MaxSize: float }
+      MaxFontSize: float
+      MaxImageSize: float }
 
   type State =
     | Empty
@@ -84,7 +89,7 @@ module Conceal =
             for t in text.Elements do
               TextBlock.create [
                 TextBlock.verticalAlignment VerticalAlignment.Center
-                TextBlock.fontSize info.MaxSize
+                TextBlock.fontSize info.MaxFontSize
                 TextBlock.foreground (toBrush t.Color)
                 TextBlock.text t.Value
               ]
@@ -101,7 +106,7 @@ module Conceal =
                   TextBlock.create [
                     TextBlock.verticalAlignment VerticalAlignment.Top
                     TextBlock.horizontalAlignment HorizontalAlignment.Center
-                    TextBlock.fontSize info.MaxSize
+                    TextBlock.fontSize info.MaxFontSize
                     TextBlock.text "・ "
                   ]
                   StackPanel.create [
@@ -114,6 +119,14 @@ module Conceal =
                 ]
               ]
           ]
+        ]
+    | Image (Svg svgContent) ->
+        let svg = new SKSvg()
+        let pict = svg.FromSvg(svgContent)
+        SKPictureControl.create [
+          SKPictureControl.height info.MaxImageSize
+          //SKPictureControl.stretch Media.Stretch.None
+          SKPictureControl.picture pict
         ]
 
   let buildContentsView (info: ContentInfo) (pageType: PageType) (contents: PageContent list) =
@@ -142,6 +155,13 @@ module Conceal =
         ]
       ]
     ]
+
+  let rec private textLines (contents: PageContent list) =
+    match contents with
+    | [] -> 0
+    | (Image _)::rest -> textLines rest
+    | (List items)::rest -> (items |> List.sumBy textLines) + textLines rest
+    | (Text _)::rest -> 1 + textLines rest
 
   let view (info: ViewInfo) (state: State) dispatch =
     match state with
@@ -173,11 +193,19 @@ module Conceal =
                 StackPanel.verticalAlignment VerticalAlignment.Center
               StackPanel.children [
                 let headerInfo =
-                  match crntPage.PageType with
-                  | TitlePage -> { ViewInfo = info; MaxSize = info.Style.TitleSize(info.Height) }
-                  | ContentPage -> { ViewInfo = info; MaxSize = info.Style.HeaderSize(info.Height) }
+                  let maxSize =
+                    match crntPage.PageType with
+                    | TitlePage -> info.Style.TitleSize(info.Height)
+                    | ContentPage -> info.Style.HeaderSize(info.Height)
+                  { ViewInfo = info; MaxFontSize = maxSize; MaxImageSize = maxSize }
+                let maxHeaderHeight = headerInfo.MaxFontSize * (float (List.length crntPage.Header))
+                let maxBodyHeight = float info.Height - maxHeaderHeight
+                // TODO : treat multiple images
+                let imageHeight =
+                  maxBodyHeight - (info.Style.TextSize(info.Height) * (crntPage.Body |> textLines |> (+)1 |> float))
+                  |> (*)0.9
                 let bodyInfo =
-                  { ViewInfo = info; MaxSize = info.Style.TextSize(info.Height) }
+                  { ViewInfo = info; MaxFontSize = info.Style.TextSize(info.Height); MaxImageSize = imageHeight }
                 yield! buildContentsView headerInfo crntPage.PageType crntPage.Header
                 yield! buildContentsView bodyInfo crntPage.PageType crntPage.Body
               ]

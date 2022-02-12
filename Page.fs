@@ -28,11 +28,16 @@ type Text =
   static member Create(firstElement: TextElement, [<ParamArray>] elements: TextElement[]) =
     { Elements = firstElement::(elements |> Array.toList) }
 
+type ImageBody =
+  | Svg of string
+
 type PageContent =
   | Text of Text
   | List of PageContent list list
+  | Image of ImageBody
   static member CreateText(text: Text) = Text text
   static member CreateList(listItems: PageContent list list) = List listItems
+  static member CreateSvg(svgContent: string) = Image (Svg svgContent)
 
 type PageType = TitlePage | ContentPage
 
