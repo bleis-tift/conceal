@@ -27,21 +27,24 @@ module Conceal =
 
   type ContentInfo =
     { ViewInfo: ViewInfo
+      OnLink: bool
       MaxFontSize: float
       MaxImageSize: float }
 
   type State =
     | Empty
     | WithInputPath of string
-    | WithSlides of Slides
+    | WithSlides of Slides * OnLink: bool
     static member Load(style: Style, path: string) =
       match SlidesLoader.load style path with
-      | Some pages -> WithSlides { Pages = pages; Current = 0 }
+      | Some pages -> WithSlides ({ Pages = pages; Current = 0 }, false)
       | None -> Empty
 
   type Message =
     | Next
     | Prev
+    | OnLink
+    | OffLink
     | UpdatePath of string
     | StartPresentation
 
@@ -57,10 +60,12 @@ module Conceal =
         | StartPresentation -> State.Load(style, path)
         | UpdatePath path -> WithInputPath path
         | other -> eprintfn "Received an invalid message: %A (current state: WithInputPath)" other; state
-    | WithSlides pages ->
+    | WithSlides (pages, onLink) ->
         match msg with
-        | Next -> WithSlides pages.Next
-        | Prev -> WithSlides pages.Prev
+        | Next -> WithSlides (pages.Next, onLink)
+        | Prev -> WithSlides (pages.Prev, onLink)
+        | OnLink -> WithSlides (pages, true)
+        | OffLink -> WithSlides (pages, false)
         | other -> eprintfn "Received an invalid message: %A (current state: WithSlides)" other; state
 
   // for-debug
@@ -77,7 +82,9 @@ module Conceal =
   let toBrush (color: Color) =
     Media.SolidColorBrush(toAvaloniaColor color)
 
-  let rec buildContentView (info: ContentInfo) (pageType: PageType) (content: PageContent) : IView =
+  let private normalCursor = new Cursor(StandardCursorType.Arrow)
+  let private linkCursor = new Cursor(StandardCursorType.Hand)
+  let rec buildContentView (info: ContentInfo) (pageType: PageType) (dispatch: Message -> unit) (content: PageContent) : IView =
     match content with
     | Text text ->
         StackPanel.create [
@@ -92,6 +99,13 @@ module Conceal =
                 TextBlock.fontSize info.MaxFontSize
                 TextBlock.foreground (toBrush t.Color)
                 TextBlock.text t.Value
+                match t.Link with
+                | None -> ()
+                | Some link ->
+                    TextBlock.cursor (if info.OnLink then linkCursor else normalCursor)
+                    TextBlock.textDecorations (Media.TextDecorationCollection.Parse("Underline"))
+                    TextBlock.onPointerEnter (fun args -> dispatch OnLink)
+                    TextBlock.onPointerLeave (fun args -> dispatch OffLink)
               ]
           ]
         ]
@@ -113,7 +127,7 @@ module Conceal =
                     StackPanel.orientation Orientation.Vertical
                     StackPanel.children [
                       for elem in listItem do
-                        buildContentView info pageType elem
+                        buildContentView info pageType dispatch elem
                     ]
                   ]
                 ]
@@ -129,8 +143,8 @@ module Conceal =
           SKPictureControl.picture pict
         ]
 
-  let buildContentsView (info: ContentInfo) (pageType: PageType) (contents: PageContent list) =
-    contents |> List.map (buildContentView info pageType)
+  let buildContentsView (info: ContentInfo) (pageType: PageType) (contents: PageContent list) (dispatch: Message -> unit) =
+    contents |> List.map (buildContentView info pageType dispatch)
 
   let buildLoadPageView path dispatch =
     DockPanel.create [
@@ -169,7 +183,7 @@ module Conceal =
         buildLoadPageView "" dispatch
     | WithInputPath path ->
         buildLoadPageView path dispatch
-    | WithSlides pages ->
+    | WithSlides (pages, onLink) ->
         let crntPage = pages.CurrentPage
         DockPanel.create [
           DockPanel.focusable true
@@ -197,7 +211,7 @@ module Conceal =
                     match crntPage.PageType with
                     | TitlePage -> info.Style.TitleSize(info.Height)
                     | ContentPage -> info.Style.HeaderSize(info.Height)
-                  { ViewInfo = info; MaxFontSize = maxSize; MaxImageSize = maxSize }
+                  { ViewInfo = info; OnLink = onLink; MaxFontSize = maxSize; MaxImageSize = maxSize }
                 let maxHeaderHeight = headerInfo.MaxFontSize * (float (List.length crntPage.Header))
                 let maxBodyHeight = float info.Height - maxHeaderHeight
                 // TODO : treat multiple images
@@ -205,9 +219,9 @@ module Conceal =
                   maxBodyHeight - (info.Style.TextSize(info.Height) * (crntPage.Body |> textLines |> (+)1 |> float))
                   |> (*)0.9
                 let bodyInfo =
-                  { ViewInfo = info; MaxFontSize = info.Style.TextSize(info.Height); MaxImageSize = imageHeight }
-                yield! buildContentsView headerInfo crntPage.PageType crntPage.Header
-                yield! buildContentsView bodyInfo crntPage.PageType crntPage.Body
+                  { ViewInfo = info; OnLink = onLink; MaxFontSize = info.Style.TextSize(info.Height); MaxImageSize = imageHeight }
+                yield! buildContentsView headerInfo crntPage.PageType crntPage.Header dispatch
+                yield! buildContentsView bodyInfo crntPage.PageType crntPage.Body dispatch
               ]
             ]
           ]

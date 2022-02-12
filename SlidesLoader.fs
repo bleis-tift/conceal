@@ -83,31 +83,34 @@ module SlidesLoader =
     Some [|
       Page.Create(
         TitlePage,
-        [PageContent.CreateText(Text.Create(TextElement.Create("Title", style.TextColor)))],
+        [PageContent.CreateText(Text.Create(TextElement.CreateText("Title", style.TextColor)))],
         [])
       Page.Create(
         ContentPage,
-        [PageContent.CreateText(Text.Create(TextElement.Create("Header", style.TextColor)))],
+        [PageContent.CreateText(Text.Create(TextElement.CreateText("Header", style.TextColor)))],
         [PageContent.CreateSvg(image)
          PageContent.CreateList([
-           [PageContent.CreateText(Text.Create(TextElement.Create("aaa", style.TextColor)))]
-           [PageContent.CreateText(Text.Create(TextElement.Create("bbb", style.TextColor)))]
-           [PageContent.CreateText(Text.Create(TextElement.Create("ccc", style.TextColor)))]
+           [PageContent.CreateText(Text.Create(
+              TextElement.CreateLink("@bleis", "https://twitter.com/bleis", style.LinkColor),
+              TextElement.CreateText(" / ", style.TextColor),
+              TextElement.CreateLink("id:bleis-tift", "https://bleis-tift.hatenablog.com/", style.LinkColor)))]
+           [PageContent.CreateText(Text.Create(TextElement.CreateText("bbb", style.TextColor)))]
+           [PageContent.CreateText(Text.Create(TextElement.CreateText("ccc", style.TextColor)))]
          ])])
       Page.Create(
         ContentPage,
-        [PageContent.CreateText(Text.Create(TextElement.Create("Header", style.TextColor)))],
-        [PageContent.CreateText(Text.Create(TextElement.Create("sample body", style.TextColor)))])
+        [PageContent.CreateText(Text.Create(TextElement.CreateText("Header", style.TextColor)))],
+        [PageContent.CreateText(Text.Create(TextElement.CreateText("sample body", style.TextColor)))])
       Page.Create(
         ContentPage,
-        [PageContent.CreateText(Text.Create(TextElement.Create("Header", style.TextColor)))],
+        [PageContent.CreateText(Text.Create(TextElement.CreateText("Header", style.TextColor)))],
         [PageContent.CreateList([
-           [PageContent.CreateText(Text.Create(TextElement.Create("item1", style.TextColor)))]
-           [PageContent.CreateText(Text.Create(TextElement.Create("item2", style.TextColor)))
+           [PageContent.CreateText(Text.Create(TextElement.CreateText("item1", style.TextColor)))]
+           [PageContent.CreateText(Text.Create(TextElement.CreateText("item2", style.TextColor)))
             PageContent.CreateList([
-              [PageContent.CreateText(Text.Create(TextElement.Create("sub-item1", style.TextColor)))]
-              [PageContent.CreateText(Text.Create(TextElement.Create("sub-item2", style.TextColor)))]
+              [PageContent.CreateText(Text.Create(TextElement.CreateText("sub-item1", style.TextColor)))]
+              [PageContent.CreateText(Text.Create(TextElement.CreateText("sub-item2", style.TextColor)))]
             ])]
-           [PageContent.CreateText(Text.Create(TextElement.Create("item3", style.TextColor)))]
+           [PageContent.CreateText(Text.Create(TextElement.CreateText("item3", style.TextColor)))]
          ])])
     |]

@@ -7,6 +7,7 @@ type Color =
 
 type Style =
   { TextColor: Color
+    LinkColor: Color
     TitleSizeRate: float
     HeaderSizeRate: float
     TextSizeRate: float }
@@ -19,9 +20,14 @@ type Style =
 
 type TextElement =
   { Value: string
+    Link: string option
     Color: Color }
-  static member Create(text: string, color: Color) =
-    { Value = text; Color = color }
+  static member Create(text: string, link: string option, color: Color) =
+    { Value = text; Link = link; Color = color }
+  static member CreateText(text: string, color: Color) =
+    { Value = text; Link = None; Color = color }
+  static member CreateLink(text: string, link: string, color: Color) =
+    { Value = text; Link = Some link; Color = color }
 
 type Text =
   { Elements: TextElement list }
