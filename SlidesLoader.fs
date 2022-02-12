@@ -100,7 +100,11 @@ module SlidesLoader =
       Page.Create(
         ContentPage,
         [PageContent.CreateText(Text.Create(TextElement.CreateText("Header", style.TextColor)))],
-        [PageContent.CreateText(Text.Create(TextElement.CreateText("sample body", style.TextColor)))])
+        [PageContent.CreateCode([
+           Text.Create(TextElement.CreateText("// コメント", style.TextColor))
+           Text.Create(TextElement.CreateText("let x = 42", style.TextColor))
+           Text.Create(TextElement.CreateText("printfn \"x=%d\" x", style.TextColor))
+         ])])
       Page.Create(
         ContentPage,
         [PageContent.CreateText(Text.Create(TextElement.CreateText("Header", style.TextColor)))],

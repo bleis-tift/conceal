@@ -24,19 +24,22 @@ module ViewInfo =
 
   open Conceal
 
-  let parse args =
+  let parse codeFontName args =
     let rec parse' acc = function
     | (Integer w)::(Integer h)::rest -> parse' { acc with Width = w; Height = h } rest
-    | (OptionName "style=" "dark")::rest -> parse' { acc with Style = Styles.dark } rest
+    | (OptionName "style=" "dark")::rest -> parse' { acc with Style = Styles.dark codeFontName } rest
     | path::rest -> parse' { acc with Path = Some path } rest
     | [] -> acc
 
-    parse' { Width = 1600; Height = 900; Style = Styles.dark; Path = None } (args |> Array.toList)
+    parse' { Width = 1600; Height = 900; Style = Styles.dark codeFontName; Path = None } (args |> Array.toList)
 
 type MainWindow(args: string[]) as this =
   inherit HostWindow()
   do
-    let args = ViewInfo.parse args
+    let allFonts = Media.FontManager.Current.GetInstalledFontFamilyNames() |> Seq.toList
+    let codeFonts = ["Consolas"; "MeiryoKe_UIGothic"; "Meiryo UI"; "Yu Gothic UI"]
+    let codeFontName = codeFonts |> List.find (fun f -> allFonts |> List.contains f)
+    let args = ViewInfo.parse codeFontName args
     base.Title <- "Conceal"
     base.Width <- float args.Width
     base.Height <- float args.Height

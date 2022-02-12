@@ -89,6 +89,9 @@ module Conceal =
   let toBrush (color: Color) =
     Media.SolidColorBrush(toAvaloniaColor color)
 
+  let toFontFamily (fontName: string) =
+    Media.FontFamily(fontName)
+
   let private normalCursor = new Cursor(StandardCursorType.Arrow)
   let private linkCursor = new Cursor(StandardCursorType.Hand)
   let rec buildContentView (info: ContentInfo) (pageType: PageType) (dispatch: Message -> unit) (content: PageContent) : IView =
@@ -117,6 +120,38 @@ module Conceal =
               ]
           ]
         ]
+    | Code lines ->
+       Canvas.create [
+         Canvas.width (float info.ViewInfo.Width * 0.9)
+         Canvas.children [
+           StackPanel.create [
+             StackPanel.orientation Orientation.Vertical
+             StackPanel.background (toBrush info.ViewInfo.Style.CodeStyles.Background)
+             StackPanel.horizontalAlignment HorizontalAlignment.Center
+             StackPanel.width (float info.ViewInfo.Width * 0.9)
+             StackPanel.children [
+               for line in lines do
+                 StackPanel.create [
+                   StackPanel.orientation Orientation.Horizontal
+                   StackPanel.children [
+                     for t in line.Elements do 
+                       TextBlock.create [
+                         TextBlock.fontFamily (toFontFamily info.ViewInfo.Style.CodeStyles.FontName)
+                         TextBlock.fontSize (info.MaxFontSize * 0.8)
+                         TextBlock.foreground (toBrush t.Color)
+                         TextBlock.text t.Value
+                       ]
+                   ]
+                 ]
+             ]
+           ]
+           Button.create [
+             Button.right 0.0
+             Button.fontSize (info.MaxFontSize * 0.5)
+             Button.content "Run"
+           ]
+         ]
+       ]
     | List listItems ->
         StackPanel.create [
           StackPanel.orientation Orientation.Vertical
@@ -203,6 +238,7 @@ module Conceal =
     | (Image _)::rest -> textLines rest
     | (List items)::rest -> (items |> List.sumBy textLines) + textLines rest
     | (Text _)::rest -> 1 + textLines rest
+    | (Code lines)::rest -> List.length lines + textLines rest
 
   let view (info: ViewInfo) (state: State) dispatch =
     match state with
