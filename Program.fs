@@ -54,7 +54,10 @@ type MainWindow(args: string[]) as this =
       | Some path -> Conceal.State.Load(args.Style, path)
       | None -> Conceal.State.Empty
 
-    Elmish.Program.mkSimple (fun () -> state) (Conceal.update args.Style) (Conceal.view args)
+    Elmish.Program.mkProgram
+      (fun () -> state, Cmd.none)
+      (Conceal.update args.Style)
+      (Conceal.view args)
     |> Program.withHost this
     |> Program.run
 

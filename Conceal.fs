@@ -7,6 +7,7 @@ open Avalonia.FuncUI.Types
 open Avalonia.Input
 open Avalonia.Layout
 open Avalonia.Controls.Skia
+open Elmish
 open WebViewControl
 open global.Svg.Skia
 
@@ -14,11 +15,16 @@ open WebView
 open SKPictureControl
 
 module Conceal =
+  type AsyncResult<'a> =
+    | NoResult
+    | Running
+    | Result of 'a
+
   type Slides =
     { Pages: Page[]
       Current: int
       Browser: string option
-      RunResult: CodeRunner.RunResult option }
+      RunResult: AsyncResult<CodeRunner.RunResult> }
     member this.Next = { this with Current = min (this.Current + 1) (this.Pages.Length - 1) }
     member this.Prev = { this with Current = max (this.Current - 1) 0 }
     member this.CurrentPage = this.Pages[this.Current]
@@ -41,7 +47,7 @@ module Conceal =
     | WithSlides of Slides * OnLink: bool
     static member Load(style: Style, path: string) =
       match SlidesLoader.load style path with
-      | Some pages -> WithSlides ({ Pages = pages; Current = 0; Browser = None; RunResult = None }, false)
+      | Some pages -> WithSlides ({ Pages = pages; Current = 0; Browser = None; RunResult = NoResult }, false)
       | None -> Empty
 
   type Message =
@@ -52,35 +58,41 @@ module Conceal =
     | OpenWebPage of string
     | CloseWebPage
     | RunCode of string
+    | RunResult of Slides
     | CloseRunResult
     | UpdatePath of string
     | StartPresentation
 
-  let update (style: Style) (msg: Message) (state: State) : State =
+  let update (style: Style) (msg: Message) (state: State) : State * Cmd<Message> =
     match state with
     | Empty ->
         match msg with
-        | UpdatePath "" -> Empty
-        | UpdatePath path -> WithInputPath path
-        | other -> eprintfn "Received an invalid message: %A (current state: Emppty)" other; state
+        | UpdatePath "" -> Empty, Cmd.none
+        | UpdatePath path -> WithInputPath path, Cmd.none
+        | other -> eprintfn "Received an invalid message: %A (current state: Emppty)" other; state, Cmd.none
     | WithInputPath path ->
         match msg with
-        | StartPresentation -> State.Load(style, path)
-        | UpdatePath path -> WithInputPath path
-        | other -> eprintfn "Received an invalid message: %A (current state: WithInputPath)" other; state
+        | StartPresentation -> State.Load(style, path), Cmd.none
+        | UpdatePath path -> WithInputPath path, Cmd.none
+        | other -> eprintfn "Received an invalid message: %A (current state: WithInputPath)" other; state, Cmd.none
     | WithSlides (pages, onLink) ->
         match msg with
-        | Next -> WithSlides (pages.Next, onLink)
-        | Prev -> WithSlides (pages.Prev, onLink)
-        | OnLink -> WithSlides (pages, true)
-        | OffLink -> WithSlides (pages, false)
-        | OpenWebPage link -> WithSlides ({ pages with Browser = Some link }, onLink)
-        | CloseWebPage -> WithSlides ({ pages with Browser = None }, onLink)
+        | Next -> WithSlides (pages.Next, onLink), Cmd.none
+        | Prev -> WithSlides (pages.Prev, onLink), Cmd.none
+        | OnLink -> WithSlides (pages, true), Cmd.none
+        | OffLink -> WithSlides (pages, false), Cmd.none
+        | OpenWebPage link -> WithSlides ({ pages with Browser = Some link }, onLink), Cmd.none
+        | CloseWebPage -> WithSlides ({ pages with Browser = None }, onLink), Cmd.none
         | RunCode code ->
-            let result = CodeRunner.run "dotnet" code
-            WithSlides ({ pages with RunResult = Some result }, onLink)
-        | CloseRunResult -> WithSlides ({ pages with RunResult = None }, onLink)
-        | other -> eprintfn "Received an invalid message: %A (current state: WithSlides)" other; state
+            let runAsync (pages, code) = async {
+              let! result = CodeRunner.runAsync "dotnet" code
+              return { pages with RunResult = Result result }
+            }
+            let cmd = Cmd.OfAsync.perform runAsync (pages, code) RunResult
+            WithSlides ({ pages with RunResult = Running }, onLink), cmd
+        | RunResult result -> WithSlides (result, false), Cmd.none
+        | CloseRunResult -> WithSlides ({ pages with RunResult = NoResult }, onLink), Cmd.none
+        | other -> eprintfn "Received an invalid message: %A (current state: WithSlides)" other; state, Cmd.none
 
   // for-debug
   let private withBorder (v: IView) =
@@ -285,6 +297,30 @@ module Conceal =
       ]
     ]
 
+  let buildRunningView info crntPage dispatch =
+    DockPanel.create [
+      DockPanel.children [
+        Grid.create [
+          Grid.children [
+            let headerInfo, bodyInfo = contentInfos info false crntPage
+            buildCurrentPage info false crntPage dispatch
+            Canvas.create [
+              Canvas.height (float info.Height - headerInfo.MaxFontSize * 0.9)
+              Canvas.width (float info.Width * 0.9)
+              Canvas.background (toBrush info.Style.CodeStyles.ResultBackground)
+              Canvas.children [
+                TextBlock.create [
+                  TextBlock.fontSize bodyInfo.MaxFontSize
+                  TextBlock.foreground (toBrush info.Style.TextColor)
+                  TextBlock.text "Running..."
+                ]
+              ]
+            ]
+          ]
+        ]
+      ]
+    ]
+
   let buildRunResultView info (result: CodeRunner.RunResult) crntPage dispatch =
     DockPanel.create [
       DockPanel.children [
@@ -333,7 +369,9 @@ module Conceal =
         buildLoadPageView path dispatch
     | WithSlides ({ Browser = Some link; Pages = _; Current = _ }, _) ->
         buildBrowserView info link dispatch
-    | WithSlides ({ RunResult = Some result; } as pages, _) ->
+    | WithSlides ({ RunResult = Running } as pages, _) ->
+        buildRunningView info pages.CurrentPage dispatch
+    | WithSlides ({ RunResult = Result result } as pages, _) ->
         buildRunResultView info result pages.CurrentPage dispatch
     | WithSlides (pages, onLink) ->
         DockPanel.create [
