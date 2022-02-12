@@ -7,14 +7,17 @@ open Avalonia.FuncUI.Types
 open Avalonia.Input
 open Avalonia.Layout
 open Avalonia.Controls.Skia
+open WebViewControl
 open global.Svg.Skia
 
+open WebView
 open SKPictureControl
 
 module Conceal =
   type Slides =
     { Pages: Page[]
-      Current: int }
+      Current: int
+      Browser: string option }
     member this.Next = { this with Current = min (this.Current + 1) (this.Pages.Length - 1) }
     member this.Prev = { this with Current = max (this.Current - 1) 0 }
     member this.CurrentPage = this.Pages[this.Current]
@@ -37,7 +40,7 @@ module Conceal =
     | WithSlides of Slides * OnLink: bool
     static member Load(style: Style, path: string) =
       match SlidesLoader.load style path with
-      | Some pages -> WithSlides ({ Pages = pages; Current = 0 }, false)
+      | Some pages -> WithSlides ({ Pages = pages; Current = 0; Browser = None }, false)
       | None -> Empty
 
   type Message =
@@ -45,6 +48,8 @@ module Conceal =
     | Prev
     | OnLink
     | OffLink
+    | OpenWebPage of string
+    | CloseWebPage
     | UpdatePath of string
     | StartPresentation
 
@@ -66,6 +71,8 @@ module Conceal =
         | Prev -> WithSlides (pages.Prev, onLink)
         | OnLink -> WithSlides (pages, true)
         | OffLink -> WithSlides (pages, false)
+        | OpenWebPage link -> WithSlides ({ pages with Browser = Some link }, onLink)
+        | CloseWebPage -> WithSlides ({ pages with Browser = None }, onLink)
         | other -> eprintfn "Received an invalid message: %A (current state: WithSlides)" other; state
 
   // for-debug
@@ -106,6 +113,7 @@ module Conceal =
                     TextBlock.textDecorations (Media.TextDecorationCollection.Parse("Underline"))
                     TextBlock.onPointerEnter (fun args -> dispatch OnLink)
                     TextBlock.onPointerLeave (fun args -> dispatch OffLink)
+                    TextBlock.onTapped (fun args -> dispatch (OpenWebPage link))
               ]
           ]
         ]
@@ -170,6 +178,25 @@ module Conceal =
       ]
     ]
 
+  let buildBrowserView info link dispatch =
+    DockPanel.create [
+      DockPanel.children [
+        TextBlock.create [
+          TextBlock.dock Dock.Top
+          TextBlock.fontSize (float info.Height * 0.03)
+          TextBlock.text "Esc: returns presentation"
+        ]
+        WebViewControl.WebView.create [
+          WebView.address link
+          WebView.onKeyDown (fun args ->
+            if args.Key = Avalonia.Input.Key.Escape then
+              args.Handled <- true
+              dispatch CloseWebPage
+          )
+        ]
+      ]
+    ]
+
   let rec private textLines (contents: PageContent list) =
     match contents with
     | [] -> 0
@@ -183,6 +210,8 @@ module Conceal =
         buildLoadPageView "" dispatch
     | WithInputPath path ->
         buildLoadPageView path dispatch
+    | WithSlides ({ Browser = Some link; Pages = _; Current = _ }, _) ->
+        buildBrowserView info link dispatch
     | WithSlides (pages, onLink) ->
         let crntPage = pages.CurrentPage
         DockPanel.create [
