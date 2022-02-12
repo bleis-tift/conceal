@@ -8,6 +8,21 @@ type Color =
 type CodeStyles =
   { Background: Color
     FontName: string
+    CommentColor: Color
+    DefaultColor: Color
+    IdentifierColor1: Color
+    IdentifierColor2: Color
+    InactiveCodeColor: Color
+    KeywordColor1: Color
+    KeywordColor2: Color
+    LineCommentColor: Color
+    NumberColor: Color
+    OperatorColor: Color
+    PreprocessorKeywordColor: Color
+    PunctuationColor: Color
+    StringColor: Color
+    TextColor: Color
+    UpperIdentifierColor: Color
     ResultBackground: Color
     ErrorColor: Color }
 
