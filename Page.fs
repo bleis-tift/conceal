@@ -38,6 +38,8 @@ type TextElement =
 
 type Text =
   { Elements: TextElement list }
+  static member Create(elements: TextElement[]) =
+    { Elements = elements |> Array.toList }
   static member Create(firstElement: TextElement, [<ParamArray>] elements: TextElement[]) =
     { Elements = firstElement::(elements |> Array.toList) }
 

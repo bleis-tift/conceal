@@ -6,6 +6,9 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Include="sample.md">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="CodeRunner.fs" />
     <Compile Include="SKPictureControl.fs" />
     <Compile Include="WebView.fs" />

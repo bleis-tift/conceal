@@ -2,7 +2,7 @@
   "profiles": {
     "Conceal": {
       "commandName": "Project",
-      "commandLineArgs": "hoge"
+      "commandLineArgs": "sample.md"
     }
   }
 }
