@@ -150,7 +150,7 @@ module Conceal =
               ]
           ]
         ]
-    | Code lines ->
+    | Code (lang, lines) ->
         Canvas.create [
           Canvas.width (float info.ViewInfo.Width * 0.9)
           Canvas.children [
@@ -175,15 +175,16 @@ module Conceal =
                   ]
               ]
             ]
-            Button.create [
-              Button.right 0.0
-              Button.fontSize (info.MaxFontSize * 0.5)
-              Button.content "Run"
-              Button.onClick (fun args ->
-                args.Handled <- true
-                dispatch (RunCode (code lines))
-              )
-            ]
+            if lang.WithRunning then
+              Button.create [
+                Button.right 0.0
+                Button.fontSize (info.MaxFontSize * 0.5)
+                Button.content "Run"
+                Button.onClick (fun args ->
+                  args.Handled <- true
+                  dispatch (RunCode (code lines))
+                )
+              ]
           ]
         ]
     | Quote text ->
@@ -286,7 +287,7 @@ module Conceal =
     | (Image _)::rest -> textLines rest
     | (List items)::rest -> (items |> List.sumBy textLines) + textLines rest
     | (Text _)::rest -> 1 + textLines rest
-    | (Code lines)::rest -> List.length lines + textLines rest
+    | (Code (_, lines))::rest -> List.length lines + textLines rest
     | (Quote _)::rest -> 1 + textLines rest
 
   let contentInfos info onLink crntPage =

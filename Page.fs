@@ -62,18 +62,22 @@ type Text =
   static member Create(firstElement: TextElement, [<ParamArray>] elements: TextElement[]) =
     { Elements = firstElement::(elements |> Array.toList) }
 
+type Language =
+  { LanguageName: string
+    WithRunning: bool }
+
 type ImageBody =
   | Svg of string
   | Png of byte[]
 
 type PageContent =
   | Text of Text
-  | Code of Text list
+  | Code of Language * Text list
   | Quote of Text
   | List of PageContent list list
   | Image of ImageBody
   static member CreateText(text: Text) = Text text
-  static member CreateCode(lines: Text list) = Code lines
+  static member CreateCode(lang: Language, lines: Text list) = Code (lang, lines)
   static member CreateQuote(text: Text) = Quote text
   static member CreateList(listItems: PageContent list list) = List listItems
   static member CreateSvg(svgContent: string) = Image (Svg svgContent)

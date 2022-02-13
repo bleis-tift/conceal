@@ -120,6 +120,11 @@ module SlidesLoader =
           |> List.map (fun item -> item |> List.collect (toBody style))
         [PageContent.CreateList(listItems)]
     | CodeBlock(code, ec, fence, language, _, _) ->
+        let lang =
+          match language.Split('-') with
+          | [|langName|] -> { LanguageName = langName; WithRunning = true }
+          | [|langName; "without"; "running"|] -> { LanguageName = langName; WithRunning = false }
+          | _ -> failwithf "unsupported language: %A" language
         let lines = code.Split([|"\r\n"; "\n"|], StringSplitOptions.None)
         let linesToks = tokenizeLines FSharpTokenizerLexState.Initial lines
         let linesText =
@@ -134,7 +139,7 @@ module SlidesLoader =
                Text.Create(elements)
              )
           |> Seq.toList
-        [PageContent.CreateCode(linesText)]
+        [PageContent.CreateCode(lang, linesText)]
     | QuotedBlock(paragraphs, _) ->
         paragraphs
         |> Seq.map (function

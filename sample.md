@@ -13,6 +13,14 @@ bleis-tift
 
 ---
 
+## 色付けだけのコード
+```fsharp-without-running
+let x = 10
+printfn "x=%d" x
+```
+
+---
+
 ## インラインコード
 test `test` test
 
