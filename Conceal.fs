@@ -228,8 +228,8 @@ module Conceal =
           //SKPictureControl.stretch Media.Stretch.None
           SKPictureControl.picture pict
         ]
-    | Image (Png pngContent) ->
-        let bitmap = new Media.Imaging.Bitmap(new MemoryStream(pngContent))
+    | Image (Png content|Jpeg content) ->
+        let bitmap = new Media.Imaging.Bitmap(new MemoryStream(content))
         Image.create [
           Image.height info.MaxImageSize
           Image.source bitmap

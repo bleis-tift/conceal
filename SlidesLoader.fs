@@ -50,6 +50,9 @@ module SlidesLoader =
     | ".png" ->
         let content = loadImage client.GetByteArrayAsync File.ReadAllBytes src
         PageContent.CreatePng(content)
+    | ".jpg" | ".jpeg" ->
+        let content = loadImage client.GetByteArrayAsync File.ReadAllBytes src
+        PageContent.CreateJpeg(content)
     | unsupported -> failwithf "unsupported image file: %A" unsupported
 
   let private toImages (node: HtmlNode) =
