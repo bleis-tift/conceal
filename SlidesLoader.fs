@@ -3,6 +3,7 @@
 open System
 open System.IO
 open System.Net.Http
+open System.Threading.Tasks
 open FSharp.Compiler.Tokenization
 open FSharp.Data
 open FSharp.Formatting.Markdown
@@ -30,10 +31,22 @@ module SlidesLoader =
 
   let private client = new HttpClient()
 
+  let private loadImage (httpLoader: string -> Task<'a>) (fileLoader: string -> 'a) (src: string) =
+    if src.StartsWith("http") then
+      (httpLoader src).Result
+    else
+      fileLoader src
+
   let private toImage (imageNode: HtmlNode) =
     let src = imageNode.AttributeValue("src")
-    let content = client.GetStringAsync(src).Result
-    PageContent.CreateSvg(content)
+    match Path.GetExtension(src) with
+    | ".svg" ->
+        let content = loadImage client.GetStringAsync File.ReadAllText src
+        PageContent.CreateSvg(content)
+    | ".png" ->
+        let content = loadImage client.GetByteArrayAsync File.ReadAllBytes src
+        PageContent.CreatePng(content)
+    | unsupported -> failwithf "unsupported image file: %A" unsupported
 
   let private toImages (node: HtmlNode) =
     match node.Elements("img") with

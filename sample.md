@@ -13,6 +13,13 @@ bleis-tift
 
 ---
 
+## PNG画像
+<div style="text-align:center;">
+  <img src="./sample.png"/>
+</div>
+
+---
+
 ## リスト
 * item1
 * item2

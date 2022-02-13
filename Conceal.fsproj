@@ -9,6 +9,9 @@
     <None Include="sample.md">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="sample.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <Compile Include="CodeRunner.fs" />
     <Compile Include="SKPictureControl.fs" />
     <Compile Include="WebView.fs" />

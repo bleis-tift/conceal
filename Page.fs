@@ -60,6 +60,7 @@ type Text =
 
 type ImageBody =
   | Svg of string
+  | Png of byte[]
 
 type PageContent =
   | Text of Text
@@ -70,6 +71,7 @@ type PageContent =
   static member CreateCode(lines: Text list) = Code lines
   static member CreateList(listItems: PageContent list list) = List listItems
   static member CreateSvg(svgContent: string) = Image (Svg svgContent)
+  static member CreatePng(pngContent: byte[]) = Image (Png pngContent)
 
 type PageType = TitlePage | ContentPage
 

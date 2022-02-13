@@ -1,5 +1,6 @@
 ﻿namespace Conceal
 
+open System.IO
 open Avalonia
 open Avalonia.Controls
 open Avalonia.FuncUI.DSL
@@ -212,6 +213,12 @@ module Conceal =
           SKPictureControl.height info.MaxImageSize
           //SKPictureControl.stretch Media.Stretch.None
           SKPictureControl.picture pict
+        ]
+    | Image (Png pngContent) ->
+        let bitmap = new Media.Imaging.Bitmap(new MemoryStream(pngContent))
+        Image.create [
+          Image.height info.MaxImageSize
+          Image.source bitmap
         ]
 
   let buildContentsView (info: ContentInfo) (pageType: PageType) (contents: PageContent list) (dispatch: Message -> unit) =
