@@ -144,6 +144,7 @@ module SlidesLoader =
                     | unsupported ->
                         failwithf "unsupported quote style. paragraph=%A" unsupported)
         |> Seq.toList
+    | Heading _ -> failwith "unexpected heading. maybe you forgot page separation(--- or --)."
     | unsupported -> failwithf "unsupported paragraph. paragraph=%A" unsupported
 
   let private toPage (style: Style) (paragraphs: MarkdownParagraphs) : Page =
