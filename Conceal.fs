@@ -135,6 +135,8 @@ module Conceal =
                 TextBlock.fontSize info.MaxFontSize
                 if info.InQuote then
                   TextBlock.fontStyle Media.FontStyle.Italic
+                if t.Code then
+                  TextBlock.fontFamily (toFontFamily info.ViewInfo.Style.CodeStyles.FontName)
                 TextBlock.foreground (toBrush t.Color)
                 TextBlock.text t.Value
                 match t.Link with

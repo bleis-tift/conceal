@@ -9,9 +9,13 @@ open FSharp.Data
 open FSharp.Formatting.Markdown
 
 module SlidesLoader =
-  let private (|SpanText|) (spans: MarkdownSpans) =
+  let rec private (|SpanText|) (spans: MarkdownSpans) =
     spans
-    |> List.map (function Literal (lit, _) -> lit)
+    |> List.map (function
+                 | Literal (lit, _) -> lit
+                 | InlineCode (code, _) -> code
+                 | DirectLink (SpanText body, _, _, _) -> body
+                 | unsupported -> failwithf "unsupported: %A" unsupported)
     |> String.concat ""
 
   let private split (pred: 'a -> bool) xs =
@@ -59,6 +63,10 @@ module SlidesLoader =
         TextElement.CreateLink(body, link, style.LinkColor)
     | Literal(text, _) ->
         TextElement.CreateText(text, style.TextColor)
+    | InlineCode(code, _) ->
+        TextElement.CreateCode(code, style.TextColor)
+    | unsupported ->
+        failwithf "unsupported span: %A" unsupported
 
   let private tokenizeLine (line: string) (tokenizer: FSharpLineTokenizer) state =
     let toks = ResizeArray()

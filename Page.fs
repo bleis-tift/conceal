@@ -44,13 +44,16 @@ type Style =
 type TextElement =
   { Value: string
     Link: string option
+    Code: bool
     Color: Color }
-  static member Create(text: string, link: string option, color: Color) =
-    { Value = text; Link = link; Color = color }
+  static member Create(text: string, link: string option, code: bool, color: Color) =
+    { Value = text; Link = link; Code = code; Color = color }
   static member CreateText(text: string, color: Color) =
-    { Value = text; Link = None; Color = color }
+    { Value = text; Link = None; Code = false; Color = color }
   static member CreateLink(text: string, link: string, color: Color) =
-    { Value = text; Link = Some link; Color = color }
+    { Value = text; Link = Some link; Code = false; Color = color }
+  static member CreateCode(text: string, color: Color) =
+    { Value = text; Link = None; Code = true; Color = color }
 
 type Text =
   { Elements: TextElement list }
