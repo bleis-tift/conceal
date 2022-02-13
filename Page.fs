@@ -30,6 +30,7 @@ type Style =
   { TextColor: Color
     LinkColor: Color
     CodeStyles: CodeStyles
+    QuoteBackgroundColor: Color
     TitleSizeRate: float
     HeaderSizeRate: float
     TextSizeRate: float }
@@ -65,10 +66,12 @@ type ImageBody =
 type PageContent =
   | Text of Text
   | Code of Text list
+  | Quote of Text
   | List of PageContent list list
   | Image of ImageBody
   static member CreateText(text: Text) = Text text
   static member CreateCode(lines: Text list) = Code lines
+  static member CreateQuote(text: Text) = Quote text
   static member CreateList(listItems: PageContent list list) = List listItems
   static member CreateSvg(svgContent: string) = Image (Svg svgContent)
   static member CreatePng(pngContent: byte[]) = Image (Png pngContent)

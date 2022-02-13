@@ -39,6 +39,7 @@ module Conceal =
   type ContentInfo =
     { ViewInfo: ViewInfo
       OnLink: bool
+      InQuote: bool
       MaxFontSize: float
       MaxImageSize: float }
 
@@ -132,6 +133,8 @@ module Conceal =
               TextBlock.create [
                 TextBlock.verticalAlignment VerticalAlignment.Center
                 TextBlock.fontSize info.MaxFontSize
+                if info.InQuote then
+                  TextBlock.fontStyle Media.FontStyle.Italic
                 TextBlock.foreground (toBrush t.Color)
                 TextBlock.text t.Value
                 match t.Link with
@@ -181,6 +184,14 @@ module Conceal =
            ]
          ]
        ]
+    | Quote text ->
+        StackPanel.create [
+          StackPanel.background (toBrush info.ViewInfo.Style.QuoteBackgroundColor)
+          StackPanel.width (float info.ViewInfo.Width * 0.9)
+          StackPanel.children [
+            buildContentView { info with InQuote = true } pageType dispatch (Text text)
+          ]
+        ]
     | List listItems ->
         StackPanel.create [
           StackPanel.orientation Orientation.Vertical
@@ -274,6 +285,7 @@ module Conceal =
     | (List items)::rest -> (items |> List.sumBy textLines) + textLines rest
     | (Text _)::rest -> 1 + textLines rest
     | (Code lines)::rest -> List.length lines + textLines rest
+    | (Quote _)::rest -> 1 + textLines rest
 
   let contentInfos info onLink crntPage =
     let headerInfo =
@@ -281,7 +293,7 @@ module Conceal =
         match crntPage.PageType with
         | TitlePage -> info.Style.TitleSize(info.Height)
         | ContentPage -> info.Style.HeaderSize(info.Height)
-      { ViewInfo = info; OnLink = onLink; MaxFontSize = maxSize; MaxImageSize = maxSize }
+      { ViewInfo = info; OnLink = onLink; InQuote = false; MaxFontSize = maxSize; MaxImageSize = maxSize }
     let maxHeaderHeight = headerInfo.MaxFontSize * (float (List.length crntPage.Header))
     let maxBodyHeight = float info.Height - maxHeaderHeight
     // TODO : treat multiple images
@@ -289,7 +301,7 @@ module Conceal =
       maxBodyHeight - (info.Style.TextSize(info.Height) * (crntPage.Body |> textLines |> (+)1 |> float))
       |> (*)0.9
     let bodyInfo =
-      { ViewInfo = info; OnLink = onLink; MaxFontSize = info.Style.TextSize(info.Height); MaxImageSize = imageHeight }
+      { ViewInfo = info; OnLink = onLink; InQuote = false; MaxFontSize = info.Style.TextSize(info.Height); MaxImageSize = imageHeight }
     (headerInfo, bodyInfo)
 
   let buildCurrentPage info onLink crntPage dispatch =

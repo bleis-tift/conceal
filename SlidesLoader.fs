@@ -127,6 +127,15 @@ module SlidesLoader =
              )
           |> Seq.toList
         [PageContent.CreateCode(linesText)]
+    | QuotedBlock(paragraphs, _) ->
+        paragraphs
+        |> Seq.map (function
+                    | (Paragraph(spans, _)) ->
+                        let text = Text.Create(spans |> Seq.map (toTextElement style) |> Seq.toArray)
+                        PageContent.CreateQuote(text)
+                    | unsupported ->
+                        failwithf "unsupported quote style. paragraph=%A" unsupported)
+        |> Seq.toList
     | unsupported -> failwithf "unsupported paragraph. paragraph=%A" unsupported
 
   let private toPage (style: Style) (paragraphs: MarkdownParagraphs) : Page =
