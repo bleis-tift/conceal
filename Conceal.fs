@@ -149,41 +149,41 @@ module Conceal =
           ]
         ]
     | Code lines ->
-       Canvas.create [
-         Canvas.width (float info.ViewInfo.Width * 0.9)
-         Canvas.children [
-           StackPanel.create [
-             StackPanel.orientation Orientation.Vertical
-             StackPanel.background (toBrush info.ViewInfo.Style.CodeStyles.Background)
-             StackPanel.horizontalAlignment HorizontalAlignment.Center
-             StackPanel.width (float info.ViewInfo.Width * 0.9)
-             StackPanel.children [
-               for line in lines do
-                 StackPanel.create [
-                   StackPanel.orientation Orientation.Horizontal
-                   StackPanel.children [
-                     for t in line.Elements do 
-                       TextBlock.create [
-                         TextBlock.fontFamily (toFontFamily info.ViewInfo.Style.CodeStyles.FontName)
-                         TextBlock.fontSize (info.MaxFontSize * 0.8)
-                         TextBlock.foreground (toBrush t.Color)
-                         TextBlock.text t.Value
-                       ]
-                   ]
-                 ]
-             ]
-           ]
-           Button.create [
-             Button.right 0.0
-             Button.fontSize (info.MaxFontSize * 0.5)
-             Button.content "Run"
-             Button.onClick (fun args ->
-               args.Handled <- true
-               dispatch (RunCode (code lines))
-             )
-           ]
-         ]
-       ]
+        Canvas.create [
+          Canvas.width (float info.ViewInfo.Width * 0.9)
+          Canvas.children [
+            StackPanel.create [
+              StackPanel.orientation Orientation.Vertical
+              StackPanel.background (toBrush info.ViewInfo.Style.CodeStyles.Background)
+              StackPanel.horizontalAlignment HorizontalAlignment.Center
+              StackPanel.width (float info.ViewInfo.Width * 0.9)
+              StackPanel.children [
+                for line in lines do
+                  StackPanel.create [
+                    StackPanel.orientation Orientation.Horizontal
+                    StackPanel.children [
+                      for t in line.Elements do 
+                        TextBlock.create [
+                          TextBlock.fontFamily (toFontFamily info.ViewInfo.Style.CodeStyles.FontName)
+                          TextBlock.fontSize (info.MaxFontSize * 0.8)
+                          TextBlock.foreground (toBrush t.Color)
+                          TextBlock.text t.Value
+                        ]
+                    ]
+                  ]
+              ]
+            ]
+            Button.create [
+              Button.right 0.0
+              Button.fontSize (info.MaxFontSize * 0.5)
+              Button.content "Run"
+              Button.onClick (fun args ->
+                args.Handled <- true
+                dispatch (RunCode (code lines))
+              )
+            ]
+          ]
+        ]
     | Quote text ->
         StackPanel.create [
           StackPanel.background (toBrush info.ViewInfo.Style.QuoteBackgroundColor)
