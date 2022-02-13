@@ -106,6 +106,21 @@ module SlidesLoader =
     | FSharpTokenColorKind.Operator -> style.OperatorColor
     | FSharpTokenColorKind.Punctuation -> style.PunctuationColor
 
+  let colorize (style: Style) (lang: Language) (code: string) =
+    let lines = code.Split([|"\r\n"; "\n"|], StringSplitOptions.None)
+    let linesToks = tokenizeLines FSharpTokenizerLexState.Initial lines
+    linesToks
+    |> Seq.map (fun lineToks ->
+         let elements =
+           lineToks
+           |> Seq.map (fun (tok, info) ->
+                TextElement.CreateText(tok, chooseColor style.CodeStyles info)
+              )
+           |> Seq.toArray
+         Text.Create(elements)
+       )
+    |> Seq.toList
+
   let rec private toBody (style: Style) (paragraph: MarkdownParagraph) =
     match paragraph with
     | Span(spans, _)
@@ -125,20 +140,7 @@ module SlidesLoader =
           | [|langName|] -> { LanguageName = langName; WithRunning = true }
           | [|langName; "without"; "running"|] -> { LanguageName = langName; WithRunning = false }
           | _ -> failwithf "unsupported language: %A" language
-        let lines = code.Split([|"\r\n"; "\n"|], StringSplitOptions.None)
-        let linesToks = tokenizeLines FSharpTokenizerLexState.Initial lines
-        let linesText =
-          linesToks
-          |> Seq.map (fun lineToks ->
-               let elements =
-                 lineToks
-                 |> Seq.map (fun (tok, info) ->
-                      TextElement.CreateText(tok, chooseColor style.CodeStyles info)
-                    )
-                 |> Seq.toArray
-               Text.Create(elements)
-             )
-          |> Seq.toList
+        let linesText = colorize style lang code
         [PageContent.CreateCode(lang, linesText)]
     | QuotedBlock(paragraphs, _) ->
         paragraphs
