@@ -4,6 +4,7 @@ open System
 open System.IO
 open System.Net.Http
 open System.Threading.Tasks
+open System.Xml.Linq
 open FSharp.Compiler.Tokenization
 open FSharp.Data
 open FSharp.Formatting.Markdown
@@ -109,20 +110,66 @@ module SlidesLoader =
     | FSharpTokenColorKind.Operator -> style.OperatorColor
     | FSharpTokenColorKind.Punctuation -> style.PunctuationColor
 
+  let rec private colorizeXml indent (style: Style) (elem: XElement) =
+    let tagName = elem.Name.LocalName
+    let attrs = elem.Attributes()
+    let children = elem.Nodes()
+    let firstLine =
+      Text.Create(
+        if children |> Seq.isEmpty then
+          [| TextElement.CreateText(indent + "<", style.CodeStyles.InactiveCodeColor)
+             TextElement.CreateText(tagName, style.CodeStyles.KeywordColor1)
+             for attr in attrs do
+               TextElement.CreateText(" " + attr.Name.LocalName, style.CodeStyles.IdentifierColor1)
+               TextElement.CreateText("=", style.CodeStyles.DefaultColor)
+               TextElement.CreateText("\"" + attr.Value + "\"", style.CodeStyles.StringColor)
+             TextElement.CreateText("/>", style.CodeStyles.InactiveCodeColor) |]
+        else
+          [| TextElement.CreateText(indent + "<", style.CodeStyles.InactiveCodeColor)
+             TextElement.CreateText(tagName, style.CodeStyles.KeywordColor1)
+             for attr in attrs do
+               TextElement.CreateText(" " + attr.Name.LocalName, style.CodeStyles.IdentifierColor1)
+               TextElement.CreateText("=", style.CodeStyles.DefaultColor)
+               TextElement.CreateText("\"" + attr.Value + "\"", style.CodeStyles.StringColor)
+             TextElement.CreateText(">", style.CodeStyles.InactiveCodeColor) |])
+    let lastLine =
+      if children |> Seq.isEmpty then []
+      else
+        [ Text.Create([|
+            TextElement.CreateText(indent + "</", style.CodeStyles.InactiveCodeColor)
+            TextElement.CreateText(tagName, style.CodeStyles.KeywordColor1)
+            TextElement.CreateText(">", style.CodeStyles.InactiveCodeColor)
+          |])]
+    [ yield firstLine
+      for child in children do
+        match child with
+        | :? XElement as elem -> yield! colorizeXml (indent + " ") style elem
+        | :? XText as text -> yield Text.Create(TextElement.CreateText(indent + " " + text.Value, style.CodeStyles.DefaultColor))
+        | :? XComment as comment ->
+            yield Text.Create(TextElement.CreateText(indent + " <!-- " + comment.Value + " -->", style.CodeStyles.CommentColor))
+        | unsupported -> failwithf "unsupported xnode: %A" unsupported
+      yield! lastLine ]
+
   let colorize (style: Style) (lang: Language) (code: string) =
-    let lines = code.Split([|"\r\n"; "\n"|], StringSplitOptions.None)
-    let linesToks = tokenizeLines FSharpTokenizerLexState.Initial lines
-    linesToks
-    |> Seq.map (fun lineToks ->
-         let elements =
-           lineToks
-           |> Seq.map (fun (tok, info) ->
-                TextElement.CreateText(tok, chooseColor style.CodeStyles info)
-              )
-           |> Seq.toArray
-         Text.Create(elements)
-       )
-    |> Seq.toList
+    match lang.LanguageName with
+    | "fsharp" ->
+        let lines = code.Split([|"\r\n"; "\n"|], StringSplitOptions.None)
+        let linesToks = tokenizeLines FSharpTokenizerLexState.Initial lines
+        linesToks
+        |> Seq.map (fun lineToks ->
+             let elements =
+               lineToks
+               |> Seq.map (fun (tok, info) ->
+                    TextElement.CreateText(tok, chooseColor style.CodeStyles info)
+                  )
+               |> Seq.toArray
+             Text.Create(elements)
+           )
+        |> Seq.toList
+    | "xml" | "xaml" ->
+        let root = XElement.Parse(code)
+        colorizeXml "" style root
+    | unsupported -> failwithf "unsupported language: %A" unsupported
 
   let rec private toBody (style: Style) (paragraph: MarkdownParagraph) =
     match paragraph with
