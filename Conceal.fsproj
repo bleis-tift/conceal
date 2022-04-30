@@ -12,12 +12,21 @@
     <None Include="sample.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <Compile Include="Async.fs" />
     <Compile Include="CodeRunner.fs" />
     <Compile Include="SKPictureControl.fs" />
     <Compile Include="WebView.fs" />
     <Compile Include="Page.fs" />
     <Compile Include="Styles.fs" />
+    <Compile Include="AppInfo.fs" />
+    <Compile Include="ColorizerFSharp.fs" />
+    <Compile Include="ColorizerXml.fs" />
+    <Compile Include="ColorizerLaTeX.fs" />
     <Compile Include="SlidesLoader.fs" />
+    <Compile Include="AvaloniaObject.fs" />
+    <Compile Include="FileSelector.fs" />
+    <Compile Include="Presentation.fs" />
+    <Compile Include="Browser.fs" />
     <Compile Include="Conceal.fs" />
     <Compile Include="Program.fs" />
   </ItemGroup>
@@ -26,6 +35,7 @@
     <PackageReference Include="Avalonia.Controls.Skia" Version="0.10.12" />
     <PackageReference Include="Avalonia.Desktop" Version="0.10.12" />
     <PackageReference Include="Avalonia.Svg.Skia" Version="0.10.12" />
+    <PackageReference Include="FParsec" Version="1.1.1" />
     <PackageReference Include="FSharp.Compiler.Service" Version="41.0.1" />
     <PackageReference Include="FSharp.Data" Version="4.2.7" />
     <PackageReference Include="FSharp.Formatting" Version="14.0.1" />

@@ -10,36 +10,13 @@ open Avalonia.FuncUI
 open Avalonia.FuncUI.Elmish
 open Avalonia.FuncUI.Components.Hosts
 
-module ViewInfo =
-  let (|Integer|_|) (str: string) =
-    match Int32.TryParse(str) with
-    | true, result -> Some result
-    | false, _ -> None
-
-  let (|OptionName|_|) (prefix: string) (str: string) =
-    if str.StartsWith(prefix) then
-      Some (str.Substring(prefix.Length))
-    else
-      None
-
-  open Conceal
-
-  let parse codeFontName args =
-    let rec parse' acc = function
-    | (Integer w)::(Integer h)::rest -> parse' { acc with Width = w; Height = h } rest
-    | (OptionName "style=" "dark")::rest -> parse' { acc with Style = Styles.dark codeFontName } rest
-    | path::rest -> parse' { acc with Path = Some path } rest
-    | [] -> acc
-
-    parse' { Width = 1600; Height = 900; Style = Styles.dark codeFontName; Path = None } (args |> Array.toList)
-
 type MainWindow(args: string[]) as this =
   inherit HostWindow()
   do
     let allFonts = Media.FontManager.Current.GetInstalledFontFamilyNames() |> Seq.toList
     let codeFonts = ["Consolas"; "MeiryoKe_UIGothic"; "Meiryo UI"; "Yu Gothic UI"]
     let codeFontName = codeFonts |> List.find (fun f -> allFonts |> List.contains f)
-    let args = ViewInfo.parse codeFontName args
+    let args = AppInfo.parse codeFontName args
     base.Title <- "Conceal"
     base.Width <- float args.Width
     base.Height <- float args.Height
@@ -49,19 +26,15 @@ type MainWindow(args: string[]) as this =
     //this.VisualRoot.VisualRoot.Renderer.DrawFps <- true
     //this.VisualRoot.VisualRoot.Renderer.DrawDirtyRects <- true
 
-    let state =
-      match args.Path with
-      | Some path -> Conceal.State.Load(args.Style, path)
-      | None -> Conceal.State.Empty
+    let state = Conceal.init args
 
     Elmish.Program.mkProgram
       (fun () -> state, Cmd.none)
-      (Conceal.update args.Style)
+      (Conceal.update)
       (Conceal.view args)
     |> Program.withHost this
     |> Program.run
 
-    
 type App() =
   inherit Application()
 

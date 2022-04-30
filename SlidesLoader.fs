@@ -16,6 +16,7 @@ module SlidesLoader =
                  | Literal (lit, _) -> lit
                  | InlineCode (code, _) -> code
                  | DirectLink (SpanText body, _, _, _) -> body
+                 | DirectImage _ -> ""
                  | unsupported -> failwithf "unsupported: %A" unsupported)
     |> String.concat ""
 
@@ -42,8 +43,13 @@ module SlidesLoader =
     else
       fileLoader src
 
-  let private toImage (imageNode: HtmlNode) =
-    let src = imageNode.AttributeValue("src")
+  type ImageInfo =
+    { ImagePath: string }
+    static member FromHtmlNode(imageNode: HtmlNode) =
+      { ImagePath = imageNode.AttributeValue("src") }
+
+  let private toImage (imageInfo: ImageInfo) =
+    let src = imageInfo.ImagePath
     match Path.GetExtension(src) with
     | ".svg" ->
         let content = loadImage client.GetStringAsync File.ReadAllText src
@@ -59,7 +65,7 @@ module SlidesLoader =
   let private toImages (node: HtmlNode) =
     match node.Elements("img") with
     | [] -> failwith "Empty html node"
-    | images -> images |> List.map toImage
+    | images -> images |> List.map (ImageInfo.FromHtmlNode >> toImage)
 
   let private toTextElement (style: Style) (span: MarkdownSpan) =
     match span with
@@ -72,107 +78,17 @@ module SlidesLoader =
     | unsupported ->
         failwithf "unsupported span: %A" unsupported
 
-  let private tokenizeLine (line: string) (tokenizer: FSharpLineTokenizer) state =
-    let toks = ResizeArray()
-    let mutable exit = false
-    let mutable state = state
-    while not exit do
-      match tokenizer.ScanToken(state) with
-      | Some tok, newState ->
-          toks.Add((line.Substring(tok.LeftColumn, tok.RightColumn - tok.LeftColumn + 1), tok))
-          state <- newState
-      | None, newState ->
-          state <- newState
-          exit <- true
-    toks :> seq<_>, state
-
-  let private sourceTok = FSharpSourceTokenizer([], Some "code.fsx")
-  let rec private tokenizeLines state lines =
-    lines
-    |> Seq.fold (fun (result, st) line ->
-         let tokenizer = sourceTok.CreateLineTokenizer(line)
-         let toks, newState = tokenizeLine line tokenizer st
-         (Seq.append result [toks], newState)) (Seq.empty, state)
-    |> fst
-
-  // TODO : consider context
-  let private chooseColor (style: CodeStyles) (info: FSharpTokenInfo) =
-    match info.ColorClass with
-    | FSharpTokenColorKind.Default -> style.DefaultColor
-    | FSharpTokenColorKind.Keyword -> style.KeywordColor1
-    | FSharpTokenColorKind.Comment -> style.CommentColor
-    | FSharpTokenColorKind.Identifier -> style.IdentifierColor1
-    | FSharpTokenColorKind.String -> style.StringColor
-    | FSharpTokenColorKind.UpperIdentifier -> style.UpperIdentifierColor
-    | FSharpTokenColorKind.InactiveCode -> style.InactiveCodeColor
-    | FSharpTokenColorKind.PreprocessorKeyword -> style.PreprocessorKeywordColor
-    | FSharpTokenColorKind.Number -> style.NumberColor
-    | FSharpTokenColorKind.Operator -> style.OperatorColor
-    | FSharpTokenColorKind.Punctuation -> style.PunctuationColor
-
-  let rec private colorizeXml indent (style: Style) (elem: XElement) =
-    let tagName = elem.Name.LocalName
-    let attrs = elem.Attributes()
-    let children = elem.Nodes()
-    let firstLine =
-      Text.Create(
-        if children |> Seq.isEmpty then
-          [| TextElement.CreateText(indent + "<", style.CodeStyles.InactiveCodeColor)
-             TextElement.CreateText(tagName, style.CodeStyles.KeywordColor1)
-             for attr in attrs do
-               TextElement.CreateText(" " + attr.Name.LocalName, style.CodeStyles.IdentifierColor1)
-               TextElement.CreateText("=", style.CodeStyles.DefaultColor)
-               TextElement.CreateText("\"" + attr.Value + "\"", style.CodeStyles.StringColor)
-             TextElement.CreateText("/>", style.CodeStyles.InactiveCodeColor) |]
-        else
-          [| TextElement.CreateText(indent + "<", style.CodeStyles.InactiveCodeColor)
-             TextElement.CreateText(tagName, style.CodeStyles.KeywordColor1)
-             for attr in attrs do
-               TextElement.CreateText(" " + attr.Name.LocalName, style.CodeStyles.IdentifierColor1)
-               TextElement.CreateText("=", style.CodeStyles.DefaultColor)
-               TextElement.CreateText("\"" + attr.Value + "\"", style.CodeStyles.StringColor)
-             TextElement.CreateText(">", style.CodeStyles.InactiveCodeColor) |])
-    let lastLine =
-      if children |> Seq.isEmpty then []
-      else
-        [ Text.Create([|
-            TextElement.CreateText(indent + "</", style.CodeStyles.InactiveCodeColor)
-            TextElement.CreateText(tagName, style.CodeStyles.KeywordColor1)
-            TextElement.CreateText(">", style.CodeStyles.InactiveCodeColor)
-          |])]
-    [ yield firstLine
-      for child in children do
-        match child with
-        | :? XElement as elem -> yield! colorizeXml (indent + " ") style elem
-        | :? XText as text -> yield Text.Create(TextElement.CreateText(indent + " " + text.Value, style.CodeStyles.DefaultColor))
-        | :? XComment as comment ->
-            yield Text.Create(TextElement.CreateText(indent + " <!-- " + comment.Value + " -->", style.CodeStyles.CommentColor))
-        | unsupported -> failwithf "unsupported xnode: %A" unsupported
-      yield! lastLine ]
-
   let colorize (style: Style) (lang: Language) (code: string) =
     match lang.LanguageName with
-    | "fsharp" ->
-        let lines = code.Split([|"\r\n"; "\n"|], StringSplitOptions.None)
-        let linesToks = tokenizeLines FSharpTokenizerLexState.Initial lines
-        linesToks
-        |> Seq.map (fun lineToks ->
-             let elements =
-               lineToks
-               |> Seq.map (fun (tok, info) ->
-                    TextElement.CreateText(tok, chooseColor style.CodeStyles info)
-                  )
-               |> Seq.toArray
-             Text.Create(elements)
-           )
-        |> Seq.toList
-    | "xml" | "xaml" ->
-        let root = XElement.Parse(code)
-        colorizeXml "" style root
+    | "fsharp" -> ColorizerFSharp.colorize style code
+    | "xml" | "xaml" -> ColorizerXml.colorize "" style (XElement.Parse(code))
+    | "latex" -> ColorizerLaTeX.colorize style code
     | unsupported -> failwithf "unsupported language: %A" unsupported
 
   let rec private toBody (style: Style) (paragraph: MarkdownParagraph) =
     match paragraph with
+    | Paragraph([DirectImage(_body, link, _title, _)], _) ->
+        [toImage { ImagePath = link }]
     | Span(spans, _)
     | Paragraph(spans, _) ->
         [PageContent.CreateText(Text.Create(spans |> Seq.map (toTextElement style) |> Seq.toArray))]
@@ -184,12 +100,10 @@ module SlidesLoader =
           items
           |> List.map (fun item -> item |> List.collect (toBody style))
         [PageContent.CreateList(listItems)]
-    | CodeBlock(code, ec, fence, language, _, _) ->
+    | CodeBlock(code, ec, fence, language, ignoredLine, _) ->
         let lang =
-          match language.Split('-') with
-          | [|langName|] -> { LanguageName = langName; WithRunning = true }
-          | [|langName; "without"; "running"|] -> { LanguageName = langName; WithRunning = false }
-          | _ -> failwithf "unsupported language: %A" language
+          { LanguageName = language
+            WithRunning = ignoredLine.Contains("without-running") |> not }
         let linesText = colorize style lang code
         [PageContent.CreateCode(lang, linesText)]
     | QuotedBlock(paragraphs, _) ->

@@ -15,6 +15,7 @@ type CodeStyles =
     InactiveCodeColor: Color
     KeywordColor1: Color
     KeywordColor2: Color
+    KeywordColor3: Color
     LineCommentColor: Color
     NumberColor: Color
     OperatorColor: Color

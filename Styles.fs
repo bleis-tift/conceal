@@ -12,6 +12,7 @@ module Styles =
         InactiveCodeColor = { A = 255uy; R = 166uy; G = 166uy; B = 166uy }
         KeywordColor1 = { A = 255uy; R = 86uy; G = 156uy; B = 214uy }
         KeywordColor2 = { A = 255uy; R = 197uy; G = 134uy; B = 192uy }
+        KeywordColor3 = { A = 255uy; R = 220uy; G = 220uy; B = 170uy }
         LineCommentColor = { A = 255uy; R = 106uy; G = 153uy; B = 85uy }
         NumberColor = { A = 255uy; R = 181uy; G = 206uy; B = 168uy }
         OperatorColor = { A = 255uy; R = 86uy; G = 156uy; B = 214uy }
